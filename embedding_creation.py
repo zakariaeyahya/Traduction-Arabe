@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 from sentence_transformers import SentenceTransformer
+
 # Nettoyage 
 def clean_description(description):
     cleaned_text = description.lower()  # Convertir en minuscules
@@ -13,20 +14,21 @@ columns_to_keep = ['preferredLabel', 'altLabels', 'description']
 df = df[columns_to_keep]
 
 df['description'] = df['description'].apply(clean_description)
-model1 = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
-model2 = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
-# création r les embeddings et les enregistrer en CSV
+model = SentenceTransformer('all-mpnet-base-v2')
+
+# création des embeddings et les enregistrer en CSV
 def create_and_save_embeddings(column_name, model, df, model_name):
     embeddings = model.encode(df[column_name].astype(str))  # Créer les embeddings
     embeddings_df = pd.DataFrame(embeddings)  # Créer un DataFrame avec les embeddings
     embeddings_file_path = f'{column_name}_embeddings_{model_name}.csv'
     embeddings_df.to_csv(embeddings_file_path, index=False)  # Enregistrer les embeddings dans un fichier CSV
     print(f"Les embeddings pour la colonne {column_name} avec le modèle {model_name} ont été enregistrés dans {embeddings_file_path}")
-for model, model_name in [(model1, 'all-mpnet-base-v2'), (model2, 'distiluse-base-multilingual-cased-v2')]:
-    create_and_save_embeddings('preferredLabel', model, df, model_name)
-    create_and_save_embeddings('altLabels', model, df, model_name)
-    create_and_save_embeddings('description', model, df, model_name)
-# combinaison  les embeddings pour chaque modèle
+
+create_and_save_embeddings('preferredLabel', model, df, 'all-mpnet-base-v2')
+create_and_save_embeddings('altLabels', model, df, 'all-mpnet-base-v2')
+create_and_save_embeddings('description', model, df, 'all-mpnet-base-v2')
+
+# combinaison des embeddings pour chaque modèle
 def combine_embeddings(model_name):
     preferredLabel_embeddings = pd.read_csv(f'preferredLabel_embeddings_{model_name}.csv')
     altLabels_embeddings = pd.read_csv(f'altLabels_embeddings_{model_name}.csv')
@@ -39,7 +41,6 @@ def combine_embeddings(model_name):
     print(f"Les embeddings combinés pour le modèle {model_name} ont été enregistrés dans combined_embeddings_{model_name}.csv")
 
 combine_embeddings('all-mpnet-base-v2')
-combine_embeddings('distiluse-base-multilingual-cased-v2')
 
 output_file_path = 'nouveau_fichier.ods'
 df.to_excel(output_file_path, index=False)
