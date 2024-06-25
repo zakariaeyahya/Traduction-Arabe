@@ -68,6 +68,9 @@ Combinaison des embeddings avec des poids définis.
 Sauvegarde des embeddings combinés et des données nettoyées dans un nouveau fichier Excel.
 Utilisation :
 Le script charge les modèles nécessaires et crée des embeddings pour les colonnes spécifiées d'un fichier Excel, puis les combine et les sauvegarde.
+Notes pour embedding_creation.py
+Ce script ne nécessite qu'un seul modèle (all-mpnet-base-v2).
+Les chemins des fichiers doivent être ajustés en fonction de votre environnement.
 #  Instructions d'Installation et d'Exécution
 1 Cloner le dépôt : 
 git clone <URL_DU_DEPOT>
