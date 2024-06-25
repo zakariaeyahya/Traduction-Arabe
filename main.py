@@ -2,74 +2,32 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pandas as pd
 import torch
-from traitement import find_most_similar_labels
+from traitement import translate_text, find_most_similar_labels, load_embeddings_and_labels
 import json
+from fastapi.responses import FileResponse
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+import logging
+from typing import List
 
 app = FastAPI()
 
 # Liste pour stocker les données des requêtes
 data_list = []
 
-# Chargement des embeddings et des étiquettes
+# Chargement des embeddings et des étiquettes à partir des fichiers
 try:
-    df_embeddings = pd.read_csv("combined_embeddings_all-mpnet-base-v2.csv")
-    embeddings = df_embeddings.values
-    labels = pd.read_excel('classeur1.ods', engine='odf')['preferredLabel'].values
+    embeddings, labels = load_embeddings_and_labels()
 except Exception as e:
     raise RuntimeError("Error loading embeddings or Excel file: " + str(e))
 
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-
-# Chargez le modèle et le tokenizer
+# Chargement du modèle de traduction et du tokenizer
 model_name = "facebook/seamless-m4t-v2-large"
 translation_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 processor = AutoTokenizer.from_pretrained(model_name)
 
-import logging
-
+# Configuration de la journalisation
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-def translate_text(text, src_lang, tgt_lang):
-    try:
-        logger.info(f"Tentative de traduction de '{text}' de {src_lang} vers {tgt_lang}")
-        inputs = processor(text=text, src_lang=src_lang, return_tensors="pt")
-        outputs = translation_model.generate(**inputs, tgt_lang=tgt_lang)
-        
-        logger.info(f"Sortie brute du modèle : {outputs}")
-        
-        if isinstance(outputs, tuple):
-            logger.info("La sortie est un tuple")
-            outputs = outputs[0]  # Prendre le premier élément si c'est un tuple
-        
-        if isinstance(outputs, torch.Tensor):
-            logger.info("Conversion du tensor en liste")
-            outputs = outputs.tolist()
-        
-        if not isinstance(outputs, list):
-            logger.warning(f"Type de sortie inattendu : {type(outputs)}")
-            return None
-        
-        if not outputs:
-            logger.warning("La liste de sorties est vide")
-            return None
-        
-        if isinstance(outputs[0], list):
-            logger.info("La sortie est une liste de listes")
-            decoded = processor.batch_decode(outputs, skip_special_tokens=True)
-        else:
-            logger.info("La sortie est une liste simple")
-            decoded = processor.decode(outputs, skip_special_tokens=True)
-        
-        logger.info(f"Texte décodé : {decoded}")
-        
-        if isinstance(decoded, list):
-            return " ".join(decoded)
-        return decoded
-    
-    except Exception as e:
-        logger.error(f"Erreur lors de la traduction : {e}")
-        return None
 
 class TextRequest(BaseModel):
     text: str
@@ -106,7 +64,6 @@ def predict(request: TextRequest):
     except Exception as e:
         logger.error(f"Erreur dans la fonction predict : {e}")
         raise HTTPException(status_code=500, detail=str(e))
-from fastapi.responses import FileResponse
 
 @app.get("/download-data/")
 def download_data():
@@ -120,4 +77,3 @@ def download_data():
     except Exception as e:
         logger.error(f"Erreur lors du téléchargement des données : {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
