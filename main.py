@@ -1,79 +1,96 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import pandas as pd
-import torch
-from traitement import translate_text, find_most_similar_labels, load_embeddings_and_labels
-import json
-from fastapi.responses import FileResponse
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-import logging
-from typing import List
+from sentence_transformers import SentenceTransformer
+import re
+import torch
+from sklearn.metrics.pairwise import cosine_similarity
+import logging  # Importez le module de logging
 
-app = FastAPI()
+# Définissez la configuration du logger
+logging.basicConfig(level=logging.INFO)  # Définit le niveau de journalisation à INFO
+logger = logging.getLogger(__name__)  # Créez un logger pour ce fichier
 
-# Liste pour stocker les données des requêtes
-data_list = []
+# Chemin absolu complet vers le fichier combined_embeddings_all-mpnet-base-v2.csv
+combined_embeddings_file = r'D:\bureau\stage\exe 2\try\combined_embeddings_all-mpnet-base-v2.csv'
 
-# Chargement des embeddings et des étiquettes à partir des fichiers
-try:
-    embeddings, labels = load_embeddings_and_labels()
-except Exception as e:
-    raise RuntimeError("Error loading embeddings or Excel file: " + str(e))
+# Chemin absolu complet vers le fichier Excel
+excel_file_path = r'd:\bureau\stage\exe 2\try\classeur1.ods'
 
-# Chargement du modèle de traduction et du tokenizer
+# Chargement du modèle SentenceTransformer
+model = SentenceTransformer('all-mpnet-base-v2')
+
+# Chargement du modèle de traduction
 model_name = "facebook/seamless-m4t-v2-large"
 translation_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 processor = AutoTokenizer.from_pretrained(model_name)
 
-# Configuration de la journalisation
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def clean_description(description):
+    cleaned_text = description.lower()  # Convertir en minuscules
+    cleaned_text = re.sub(r'[^A-Za-z0-9]+', ' ', cleaned_text)  # Supprimer les caractères spéciaux
+    return cleaned_text
 
-class TextRequest(BaseModel):
-    text: str
+def get_embedding(text):
+    cleaned_text = clean_description(text)
+    embedding = model.encode([cleaned_text])
+    return embedding
 
-@app.post("/predict/")
-def predict(request: TextRequest):
+def translate_text(text, src_lang, tgt_lang):
     try:
-        user_text = request.text
-        logger.info(f"Texte reçu : {user_text}")
+        inputs = processor(text=text, src_lang=src_lang, return_tensors="pt")
+        outputs = translation_model.generate(**inputs, tgt_lang=tgt_lang)
         
-        # Translate Arabic to English
-        translated_text = translate_text(user_text, src_lang="arb", tgt_lang="eng")
-        if not translated_text:
-            raise ValueError("La traduction a échoué")
+        if isinstance(outputs, tuple):
+            outputs = outputs[0]  # Prendre le premier élément si c'est un tuple
         
-        logger.info(f"Texte traduit : {translated_text}")
+        if isinstance(outputs, torch.Tensor):
+            outputs = outputs.tolist()
         
-        # Get embeddings
-        results = find_most_similar_labels(translated_text, embeddings, labels)
+        if not isinstance(outputs, list):
+            return None
         
-        # Ajouter les données à la liste
-        data_list.append({
-            "user_text": user_text,
-            "translated_text": translated_text,
-            "results": results
+        if not outputs:
+            return None
+        
+        if isinstance(outputs[0], list):
+            decoded = processor.batch_decode(outputs, skip_special_tokens=True)
+        else:
+            decoded = processor.decode(outputs, skip_special_tokens=True)
+        
+        if isinstance(decoded, list):
+            decoded = " ".join(decoded)
+        
+        logger.info(f"Texte traduit de {src_lang} vers {tgt_lang} : {decoded}")
+        
+        return decoded
+    
+    except Exception as e:
+        logger.error(f"Erreur lors de la traduction : {e}")
+        return None
+
+def find_most_similar_labels(user_input, embeddings, labels, top_k=5):
+    user_embedding = get_embedding(user_input)
+    similarities = cosine_similarity(user_embedding, embeddings)[0]
+    indices = similarities.argsort()[::-1][:top_k]
+    
+    results = []
+    for idx in indices:
+        label_eng = labels[idx]
+        label_arb = translate_text(label_eng, src_lang="eng", tgt_lang="arb") or "Traduction échouée"
+        
+        results.append({
+            "label_eng": label_eng,
+            "label_arb": label_arb,
+            "similarity": float(similarities[idx])
         })
-        
-        return {
-            "user_text": user_text,
-            "translated_text": translated_text,
-            "results": results
-        }
     
-    except Exception as e:
-        logger.error(f"Erreur dans la fonction predict : {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/download-data/")
-def download_data():
+    return results
+# Fonction pour charger les embeddings et les étiquettes à partir des fichiers
+def load_embeddings_and_labels():
     try:
-        # Écrire les données dans un fichier JSON
-        with open("data.json", "w") as json_file:
-            json.dump(data_list, json_file, indent=4)
-        
-        return FileResponse("data.json", filename="data.json", media_type="application/json")
-    
+        df_embeddings = pd.read_csv(combined_embeddings_file)
+        embeddings = df_embeddings.values
+        df_labels = pd.read_excel(excel_file_path, engine='odf')
+        labels = df_labels['preferredLabel'].values
+        return embeddings, labels
     except Exception as e:
-        logger.error(f"Erreur lors du téléchargement des données : {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise RuntimeError(f"Erreur lors du chargement des embeddings ou du fichier Excel : {str(e)}")
