@@ -56,7 +56,18 @@ Afficher les résultats de similarité et les étiquettes en anglais et en arabe
 Utilisation :
 Lancer l'application Streamlit avec :
 streamlit run app.py
+##  4. embedding_creation.py
+Ce script gère la création des embeddings pour les colonnes spécifiées d'un fichier Excel et les combine en utilisant des poids définis.
 
+Fonctionnalités :
+
+Nettoyage de la description (clean_description).
+Chargement des données à partir d'un fichier Excel.
+Création des embeddings pour les colonnes spécifiées en utilisant le modèle all-mpnet-base-v2.
+Combinaison des embeddings avec des poids définis.
+Sauvegarde des embeddings combinés et des données nettoyées dans un nouveau fichier Excel.
+Utilisation :
+Le script charge les modèles nécessaires et crée des embeddings pour les colonnes spécifiées d'un fichier Excel, puis les combine et les sauvegarde.
 #  Instructions d'Installation et d'Exécution
 1 Cloner le dépôt : 
 git clone <URL_DU_DEPOT>
