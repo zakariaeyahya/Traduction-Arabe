@@ -1,10 +1,10 @@
-# Projet: Traduction et Similarité de Textes en Darija et Anglais
+# Projet: Traduction et Similarité de Textes en ARABE et Anglais
 
 
  
 ## Description
 
-Ce projet comprend trois scripts principaux : traitement.py, main.py, et app.py. Ensemble, ils forment un pipeline qui permet de traduire des textes en Darija vers l'anglais, de trouver des étiquettes similaires à partir d'un ensemble pré-embarqués, et d'interagir avec ces fonctionnalités via une API et une interface utilisateur Streamlit.
+Ce projet comprend trois scripts principaux : traitement.py, main.py, et app.py. Ensemble, ils forment un pipeline qui permet de traduire des textes en ARABE vers l'anglais, de trouver des étiquettes similaires à partir d'un ensemble pré-embarqués, et d'interagir avec ces fonctionnalités via une API et une interface utilisateur Streamlit.
 
 
 
@@ -39,7 +39,7 @@ Ce script implémente une API FastAPI pour servir les fonctionnalités de traduc
 
 Endpoints :
 
-POST /predict/: Reçoit un texte en Darija, le traduit en anglais, et trouve les étiquettes les plus similaires.
+POST /predict/: Reçoit un texte en ARABE, le traduit en anglais, et trouve les étiquettes les plus similaires.
 GET /download-data/: Permet de télécharger les données des requêtes traitées sous forme de fichier JSON.
 Utilisation :
 Lancer l'application avec :
@@ -50,7 +50,7 @@ Ce script implémente une interface utilisateur avec Streamlit pour interagir av
 
 Fonctionnalités :
 
-Entrer un texte en Darija.
+Entrer un texte en ARABE.
 Traduire le texte et afficher les étiquettes similaires.
 Afficher les résultats de similarité et les étiquettes en anglais et en arabe.
 Utilisation :
@@ -91,7 +91,7 @@ streamlit run app.py
 
 ## Exemples d'Utilisation
 Accéder à l'interface utilisateur Streamlit à l'adresse http://localhost:8501.
-Utiliser l'API en envoyant des requêtes POST à http://localhost:8000/predict/ avec un texte en Darija dans le corps de la requête.
+Utiliser l'API en envoyant des requêtes POST à http://localhost:8000/predict/ avec un texte en ARABE dans le corps de la requête.
 # Notes
 Assurez-vous que les fichiers nécessaires (combined_embeddings_all-mpnet-base-v2.csv et classeur1.ods) sont disponibles et correctement référencés dans le script.
 Vérifiez que les modèles nécessaires sont téléchargés et chargés correctement.
